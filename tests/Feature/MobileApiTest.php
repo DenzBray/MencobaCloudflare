@@ -76,6 +76,7 @@ class MobileApiTest extends TestCase
         $this->getJson('/api/laporan/'.$ticketCode)
             ->assertOk()
             ->assertJsonPath('data.kode_tiket', $ticketCode)
-            ->assertJsonPath('data.status_laporan', 'menunggu');
+            ->assertJsonPath('data.status_laporan', 'menunggu')
+            ->assertJsonPath('data.hasil_inspeksi', null);
     }
 }
