@@ -96,6 +96,7 @@ class AuthControllerTest extends TestCase
         $this->assertSame('warga', $user->role);
         $this->assertSame(['warga'], $user->roles);
         $this->assertSame($village->id_desa, $user->id_desa);
+        $this->assertSame('warga_ajung', $user->name);
         $this->assertTrue(Hash::check('secret123', $user->password));
         $this->assertDatabaseHas('app_mobile_tokens', [
             'id_user' => $user->id_user,
@@ -244,6 +245,7 @@ class AuthControllerTest extends TestCase
         $this->assertDatabaseHas('app_users', [
             'id_user' => $user->id_user,
             'nama_lengkap' => 'Warga Diperbarui',
+            'name' => 'warga_lama',
             'username' => 'warga_lama',
             'email' => 'warga-lama@example.test',
             'no_telepon' => null,

@@ -69,6 +69,7 @@ class AuthController extends Controller
         return DB::transaction(function () use ($validated): JsonResponse {
             $user = User::query()->create([
                 'nama_lengkap' => trim($validated['nama_lengkap']),
+                'name' => trim($validated['username']),
                 'username' => trim($validated['username']),
                 'email' => strtolower(trim($validated['email'])),
                 'password' => $validated['password'],
@@ -131,6 +132,7 @@ class AuthController extends Controller
 
         $profile = [
             'nama_lengkap' => trim($validated['nama_lengkap']),
+            'name' => $validated['username'],
             'username' => $validated['username'],
             'email' => $validated['email'],
         ];
