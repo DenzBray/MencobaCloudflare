@@ -97,6 +97,65 @@ class AuthController extends Controller
         ]);
     }
 
+    public function updateProfile(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        if (is_string($request->input('username'))) {
+            $request->merge(['username' => trim($request->input('username'))]);
+        }
+
+        if (is_string($request->input('email'))) {
+            $request->merge(['email' => strtolower(trim($request->input('email')))]);
+        }
+
+        $validated = $request->validate([
+            'nama_lengkap' => ['required', 'string', 'max:150'],
+            'username' => [
+                'required',
+                'string',
+                'min:3',
+                'max:50',
+                'alpha_dash',
+                Rule::unique('app_users', 'username')->ignore($user->id_user, 'id_user'),
+            ],
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique('app_users', 'email')->ignore($user->id_user, 'id_user'),
+            ],
+            'no_telepon' => ['sometimes', 'nullable', 'string', 'max:20'],
+        ]);
+
+        $profile = [
+            'nama_lengkap' => trim($validated['nama_lengkap']),
+            'username' => $validated['username'],
+            'email' => $validated['email'],
+        ];
+
+        if (array_key_exists('no_telepon', $validated)) {
+            $profile['no_telepon'] = $validated['no_telepon'];
+        }
+
+        $user->fill($profile)->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profil berhasil diperbarui.',
+            'data' => [
+                'user' => [
+                    'id' => $user->id_user,
+                    'nama_lengkap' => $user->nama_lengkap,
+                    'username' => $user->username,
+                    'email' => $user->email,
+                    'no_telepon' => $user->no_telepon,
+                ],
+            ],
+        ]);
+    }
+
     private function issueToken(User $user, string $message, int $status): JsonResponse
     {
         $plainToken = Str::random(80);
