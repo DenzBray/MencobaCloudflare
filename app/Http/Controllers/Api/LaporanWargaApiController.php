@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Desa;
 use App\Models\LaporanWarga;
+use App\Models\MobileAccessToken;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -36,35 +39,58 @@ class LaporanWargaApiController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
-            $validated = $request->validate([
-                'nama_pelapor' => 'required|string|max:150',
-                'nik_pelapor' => 'nullable|string|max:16',
-                'no_wa' => 'nullable|string|max:20',
-                'id_desa' => 'required|integer|exists:ref_desa,id_desa',
-                'rt' => 'required|string|max:5',
-                'rw' => 'required|string|max:5',
-                'kategori_laporan' => 'required|in:air_masalah,sanitasi_lingkungan',
-                'deskripsi' => 'required|string|min:10|max:2000',
+            $user = $this->resolveAuthenticatedMobileUser($request);
 
-                'latitude' => 'required|numeric|between:-90,90',
-                'longitude' => 'required|numeric|between:-180,180',
-                'foto_bukti' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:5120',
+            $validated = $request->validate([
+                'nama_pelapor' => [
+                    $user === null ? 'required' : 'nullable',
+                    'string',
+                    'max:150',
+                ],
+                'nik_pelapor' => 'nullable|string|max:16',
+                'no_wa' => [
+                    $user === null ? 'required' : 'nullable',
+                    'string',
+                    'max:20',
+                ],
+                'id_desa' => 'required|integer|exists:ref_desa,id_desa',
+                'rt' => 'required|string|max:10',
+                'rw' => 'required|string|max:10',
+                'kategori_laporan' => [
+                    'required',
+                    'string',
+                    'max:100',
+                    Rule::in([
+                        'air_sumur_keruh_berbau',
+                        'sarang_nyamuk_dbd',
+                        'jamban_limbah_stbm',
+                        'tumpukan_sampah',
+                        'air_masalah',
+                        'sanitasi_lingkungan',
+                    ]),
+                ],
+                'deskripsi' => 'required|string|max:2000',
+                'alamat_detail' => 'nullable|string|max:255',
+                'patokan_alamat' => 'nullable|string|max:255',
+                'latitude' => 'nullable|numeric|between:-90,90',
+                'longitude' => 'nullable|numeric|between:-180,180',
+                'foto_bukti' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
             ]);
 
-            $latitude = (float) $request->input('latitude');
-            $longitude = (float) $request->input('longitude');
-            $distance = $this->calculateDistanceInKilometers(
-                -8.1741,
-                113.7208,
-                $latitude,
-                $longitude,
-            );
+            if (isset($validated['latitude'], $validated['longitude'])) {
+                $distance = $this->calculateDistanceInKilometers(
+                    -8.1741,
+                    113.7208,
+                    (float) $validated['latitude'],
+                    (float) $validated['longitude'],
+                );
 
-            if ($distance > 5) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Gagal mengirim laporan. Lokasi Anda saat ini berada di luar cakupan wilayah Sumbersari, Jember.',
-                ], 403);
+                if ($distance > 5) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Gagal mengirim laporan. Lokasi Anda saat ini berada di luar cakupan wilayah Sumbersari, Jember.',
+                    ], 403);
+                }
             }
 
             $fotoBuktiPath = null;
@@ -73,18 +99,31 @@ class LaporanWargaApiController extends Controller
                     ->store('laporan/foto_bukti', 'public');
             }
 
+            $alamatDetail = $validated['alamat_detail']
+                ?? $validated['patokan_alamat']
+                ?? null;
+            $namaPelapor = $validated['nama_pelapor']
+                ?? ($user?->nama_lengkap ?: $user?->name);
+            $noWa = $validated['no_wa']
+                ?? ($user?->no_telepon ?: $user?->no_wa);
+
             $laporan = LaporanWarga::create([
                 'kode_tiket' => LaporanWarga::generateKodeTiket(),
-                'nama_pelapor' => $validated['nama_pelapor'],
+                'id_user' => $user?->getAttribute('id') ?? $user?->getAttribute('id_user'),
+                'nama_pelapor' => $namaPelapor,
                 'nik_pelapor' => $validated['nik_pelapor'] ?? null,
-                'no_wa' => $validated['no_wa'] ?? null,
+                'no_wa' => $noWa,
                 'id_desa' => $validated['id_desa'],
                 'rt' => $validated['rt'],
                 'rw' => $validated['rw'],
                 'kategori_laporan' => $validated['kategori_laporan'],
                 'deskripsi' => $validated['deskripsi'],
                 'foto_bukti' => $fotoBuktiPath,
+                'alamat_detail' => $alamatDetail,
+                'patokan_alamat' => $alamatDetail,
                 'status_laporan' => 'menunggu',
+                'latitude' => $validated['latitude'] ?? null,
+                'longitude' => $validated['longitude'] ?? null,
             ]);
 
             return response()->json([
@@ -92,6 +131,14 @@ class LaporanWargaApiController extends Controller
                 'message' => 'Laporan berhasil dikirim. Tim Kesling akan segera menindaklanjuti.',
                 'kode_tiket' => $laporan->kode_tiket,
                 'id_laporan' => $laporan->id_laporan,
+                'data' => [
+                    'laporan' => $laporan->fresh(['desa', 'pelapor']),
+                    'kode_tiket' => $laporan->kode_tiket,
+                    'kategori_laporan' => $laporan->kategori_laporan,
+                    'kategori_label' => $laporan->kategori_label,
+                    'latitude' => $laporan->latitude,
+                    'longitude' => $laporan->longitude,
+                ],
             ], 201);
 
         } catch (ValidationException $e) {
@@ -108,6 +155,34 @@ class LaporanWargaApiController extends Controller
                 'message' => 'Terjadi kesalahan server. Coba lagi nanti.',
             ], 500);
         }
+    }
+
+    private function resolveAuthenticatedMobileUser(Request $request): ?User
+    {
+        if ($request->user() instanceof User) {
+            return $request->user();
+        }
+
+        $plainToken = $request->bearerToken();
+        if ($plainToken === null || $plainToken === '') {
+            return null;
+        }
+
+        $mobileToken = MobileAccessToken::query()
+            ->where('token_hash', hash('sha256', $plainToken))
+            ->first(['id_user', 'expires_at']);
+
+        if ($mobileToken === null) {
+            return null;
+        }
+
+        if ($mobileToken->expires_at !== null && $mobileToken->expires_at->isPast()) {
+            return null;
+        }
+
+        $user = User::query()->find($mobileToken->id_user);
+
+        return $user instanceof User && $user->is_active ? $user : null;
     }
 
     private function calculateDistanceInKilometers(

@@ -7,6 +7,7 @@ use App\Models\Education;
 use App\Models\InspeksiIkl;
 use App\Models\JadwalInspeksi;
 use App\Models\LaporanWarga;
+use App\Models\MobileAccessToken;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -48,6 +49,79 @@ class MobileApiTest extends TestCase
         $response->assertNoContent()
             ->assertHeader('Access-Control-Allow-Origin', '*')
             ->assertHeader('Access-Control-Allow-Methods');
+    }
+
+    public function test_mobile_report_accepts_new_category_gps_and_address_detail(): void
+    {
+        $village = Desa::query()->forceCreate(['nama_desa' => 'Sumbersari']);
+
+        $response = $this->postJson('/api/laporan', [
+            'nama_pelapor' => 'Warga Sumbersari',
+            'no_wa' => '081234567890',
+            'id_desa' => $village->id_desa,
+            'rt' => '02',
+            'rw' => '03',
+            'kategori_laporan' => 'sarang_nyamuk_dbd',
+            'alamat_detail' => 'Dekat Balai RW 03',
+            'latitude' => -8.1741,
+            'longitude' => 113.7208,
+            'deskripsi' => 'Ditemukan banyak sarang nyamuk di halaman rumah.',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.kategori_laporan', 'sarang_nyamuk_dbd')
+            ->assertJsonPath('data.kategori_label', 'Sarang Nyamuk / Indikasi DBD')
+            ->assertJsonPath('data.latitude', '-8.17410000')
+            ->assertJsonPath('data.longitude', '113.72080000');
+
+        $this->assertDatabaseHas('trx_laporan_warga', [
+            'kode_tiket' => $response->json('kode_tiket'),
+            'kategori_laporan' => 'sarang_nyamuk_dbd',
+            'alamat_detail' => 'Dekat Balai RW 03',
+            'patokan_alamat' => 'Dekat Balai RW 03',
+        ]);
+    }
+
+    public function test_authenticated_mobile_report_uses_account_identity(): void
+    {
+        $village = Desa::query()->forceCreate(['nama_desa' => 'Sumbersari']);
+        $user = User::query()->create([
+            'nama_lengkap' => 'Warga Login',
+            'username' => 'warga-login',
+            'email' => 'warga-login@example.test',
+            'password' => 'secret123',
+            'no_telepon' => '081299999999',
+            'role' => 'warga',
+            'is_active' => true,
+        ]);
+        $plainToken = 'warga-mobile-token-'.$user->id_user;
+        MobileAccessToken::query()->create([
+            'id_user' => $user->id_user,
+            'name' => 'flutter-mobile',
+            'token_hash' => hash('sha256', $plainToken),
+        ]);
+
+        $response = $this->withToken($plainToken)->postJson('/api/laporan', [
+            'id_desa' => $village->id_desa,
+            'rt' => '04',
+            'rw' => '05',
+            'kategori_laporan' => 'tumpukan_sampah',
+            'patokan_alamat' => 'Sebelah warung Pak Budi',
+            'deskripsi' => 'Tumpukan sampah mengganggu akses jalan gang.',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.kategori_label', 'Tumpukan Sampah');
+
+        $this->assertDatabaseHas('trx_laporan_warga', [
+            'kode_tiket' => $response->json('kode_tiket'),
+            'id_user' => $user->id_user,
+            'nama_pelapor' => 'Warga Login',
+            'no_wa' => '081299999999',
+            'alamat_detail' => 'Sebelah warung Pak Budi',
+        ]);
     }
 
     public function test_mobile_report_can_be_submitted_and_tracked_by_ticket(): void
