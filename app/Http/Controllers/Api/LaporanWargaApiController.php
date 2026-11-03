@@ -210,7 +210,11 @@ class LaporanWargaApiController extends Controller
      */
     public function statusByTiket(string $kodeTiket): JsonResponse
     {
-        $laporan = LaporanWarga::with(['desa', 'jadwal.operator:id_user,nama_lengkap'])
+        $laporan = LaporanWarga::with([
+            'desa',
+            'jadwal.operator:id_user,nama_lengkap',
+            'jadwal.inspeksiIkl',
+        ])
             ->where('kode_tiket', $kodeTiket)
             ->first();
 
@@ -220,6 +224,9 @@ class LaporanWargaApiController extends Controller
                 'message' => 'Kode tiket tidak ditemukan.',
             ], 404);
         }
+
+        $jadwal = $laporan->jadwal;
+        $inspeksi = $jadwal?->inspeksiIkl;
 
         return response()->json([
             'success' => true,
@@ -232,10 +239,19 @@ class LaporanWargaApiController extends Controller
                 'rt' => $laporan->rt,
                 'rw' => $laporan->rw,
                 'created_at' => $laporan->created_at?->format('d M Y H:i'),
-                'jadwal' => $laporan->jadwal ? [
-                    'tanggal_kunjungan' => $laporan->jadwal->tanggal_kunjungan?->format('d M Y'),
-                    'petugas' => $laporan->jadwal->operator?->nama_lengkap,
-                    'status_kunjungan' => $laporan->jadwal->status_kunjungan,
+                'jadwal' => $jadwal ? [
+                    'tanggal_kunjungan' => $jadwal->tanggal_kunjungan?->format('d M Y'),
+                    'petugas' => $jadwal->operator?->nama_lengkap,
+                    'status_kunjungan' => $jadwal->status_kunjungan,
+                ] : null,
+                'hasil_inspeksi' => $inspeksi ? [
+                    'id_inspeksi' => $inspeksi->id_inspeksi,
+                    'total_skor_ya' => $inspeksi->total_skor_ya,
+                    'kategori_risiko' => $inspeksi->kategori_risiko,
+                    'label_kategori_risiko' => $inspeksi->label_kategori_risiko,
+                    'tanggal_inspeksi' => $inspeksi->tanggal_inspeksi?->toDateString(),
+                    'rekomendasi_sanitarian' => $inspeksi->rekomendasi_sanitarian,
+                    'intervensi_fisik' => $inspeksi->intervensi_fisik,
                 ] : null,
             ],
         ]);

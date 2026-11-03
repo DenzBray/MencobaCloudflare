@@ -2,12 +2,10 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\EducationApiController;
-use App\Http\Controllers\Api\InspectionController;
 use App\Http\Controllers\Api\LaporanWargaApiController;
 use App\Http\Controllers\Api\MobileAuthController;
 use App\Http\Controllers\Api\OfficerApiController;
 use App\Http\Controllers\Api\ReportController;
-use App\Http\Middleware\OfficerAuth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
@@ -26,14 +24,6 @@ Route::prefix('auth')->name('api.auth.')->group(function () {
     Route::post('/login', [MobileAuthController::class, 'login'])->name('login');
     Route::post('/logout', [MobileAuthController::class, 'logout'])->name('logout');
 });
-
-Route::prefix('v1/officer')
-    ->middleware(OfficerAuth::class)
-    ->name('api.v1.officer.')
-    ->group(function (): void {
-        Route::post('/inspections', [InspectionController::class, 'store'])
-            ->name('inspections.store');
-    });
 
 Route::prefix('v1')->name('api.v1.')->group(function (): void {
     Route::post('/login', [AuthController::class, 'login'])

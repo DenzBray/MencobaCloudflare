@@ -339,6 +339,8 @@ class OfficerApiController extends Controller
             'rekomendasi_sanitarian' => ['required', 'string', 'min:5', 'max:2000'],
             'intervensi_fisik' => ['nullable', 'string', 'max:150'],
             'catatan_intervensi' => ['nullable', 'string', 'max:10000'],
+            'catatan_petugas' => ['nullable', 'string', 'max:10000'],
+            'foto_bukti' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'foto_inspeksi' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
@@ -353,7 +355,11 @@ class OfficerApiController extends Controller
             ->filter(fn (string $field): bool => (bool) $validated[$field])
             ->count();
         $kategoriRisiko = InspeksiIkl::hitungKategoriRisiko($totalSkorYa);
-        $fotoPath = $request->file('foto_inspeksi')?->store('inspeksi-ikl', 'public');
+        $fotoBukti = $request->file('foto_bukti');
+        $fotoDisk = $fotoBukti !== null ? 'local' : 'public';
+        $fotoPath = $fotoBukti !== null
+            ? $fotoBukti->store('inspeksi-ikl', $fotoDisk)
+            : $request->file('foto_inspeksi')?->store('inspeksi-ikl', $fotoDisk);
 
         try {
             $result = DB::transaction(function () use (
@@ -393,7 +399,9 @@ class OfficerApiController extends Controller
                     'tanggal_inspeksi' => now()->toDateString(),
                     'intervensi_fisik' => $validated['intervensi_fisik'] ?? null,
                     'catatan_intervensi' => $validated['catatan_intervensi'] ?? null,
+                    'catatan_petugas' => $validated['catatan_petugas'] ?? null,
                     'foto_inspeksi' => $fotoPath,
+                    'foto_bukti' => $fotoPath,
                 ]);
 
                 $schedule->update(['status_kunjungan' => 'selesai']);
@@ -406,7 +414,7 @@ class OfficerApiController extends Controller
             });
         } catch (Throwable $exception) {
             if ($fotoPath !== null) {
-                Storage::disk('public')->delete($fotoPath);
+                Storage::disk($fotoDisk)->delete($fotoPath);
             }
 
             throw $exception;
