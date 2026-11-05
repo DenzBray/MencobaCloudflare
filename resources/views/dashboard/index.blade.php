@@ -10,7 +10,7 @@
     {{-- Stat Cards --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {{-- Total Laporan --}}
-        <div class="card p-5 bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div class="card relative overflow-hidden p-5 bg-white rounded-2xl shadow-sm border border-gray-100">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Total Laporan</p>
@@ -26,7 +26,7 @@
         </div>
 
         {{-- Menunggu --}}
-        <div class="card p-5 bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div class="card relative overflow-hidden p-5 bg-white rounded-2xl shadow-sm border border-gray-100">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Menunggu</p>
@@ -42,7 +42,7 @@
         </div>
 
         {{-- Selesai --}}
-        <div class="card p-5 bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div class="card relative overflow-hidden p-5 bg-white rounded-2xl shadow-sm border border-gray-100">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Selesai</p>
@@ -59,7 +59,7 @@
 
         {{-- Role Card --}}
         @if(session('role') === 'citizen')
-        <div class="card p-5 bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div class="card relative overflow-hidden p-5 bg-white rounded-2xl shadow-sm border border-gray-100">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Artikel Edukasi</p>
@@ -74,7 +74,7 @@
             </div>
         </div>
         @elseif(session('role') === 'officer')
-        <div class="card p-5 bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div class="card relative overflow-hidden p-5 bg-white rounded-2xl shadow-sm border border-gray-100">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Jadwal Saya</p>
@@ -89,7 +89,7 @@
             </div>
         </div>
         @else
-        <div class="card p-5 bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div class="card relative overflow-hidden p-5 bg-white rounded-2xl shadow-sm border border-gray-100">
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Petugas Aktif</p>
