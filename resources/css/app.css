@@ -338,26 +338,12 @@ a {
     border: 1px solid var(--glass-border);
     border-radius: 22px;
     background:
+        radial-gradient(circle, transparent 50px, rgba(56, 189, 248, 0.2) 51px 52px, transparent 53px) right top / 104px 104px no-repeat,
         radial-gradient(circle at 100% 0%, rgba(56, 189, 248, 0.08) 0, transparent 112px),
         rgba(255, 255, 255, 0.82);
     box-shadow: var(--ocean-shadow);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-}
-
-.card::after,
-.stat-card::after {
-    position: absolute;
-    z-index: -1;
-    top: 0;
-    right: 0;
-    width: 104px;
-    height: 104px;
-    border: 1px solid rgba(56, 189, 248, 0.2);
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.78), rgba(56, 189, 248, 0.04) 66%);
-    content: "";
-    pointer-events: none;
 }
 
 .stat-card {
@@ -378,6 +364,13 @@ textarea,
     background-color: rgba(255, 255, 255, 0.9);
     color: var(--deep-navy);
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+input.filter-search-input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]) {
+    min-height: 48px;
+    border-color: #dbeafe;
+    border-radius: 9999px;
+    background-color: rgba(255, 255, 255, 0.92);
 }
 
 input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):focus,
